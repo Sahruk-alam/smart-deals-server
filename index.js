@@ -1,0 +1,80 @@
+const express = require("express");
+const cors = require("cors");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+
+const port = process.env.PORT || 3000;
+
+const uri =
+  "mongodb+srv://smartDeals:3yV0xfY16HZCmiQk@cluster0.jfbqb9o.mongodb.net/?appName=Cluster0";
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
+
+app.get("/", (req, res) => {
+  res.send("Smart deals Server is running");
+});
+
+async function run() {
+  try {
+    await client.connect();
+    const db = client.db("smartDeals");
+    const collection = db.collection("products");
+
+    app.get('/products/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await collection.findOne(query);
+        res.send(result);
+    })
+    app.get("/products", async (req, res) => {
+        const cursor=collection.find();
+        const result=await cursor.toArray();
+        res.send(result);
+    })
+    app.post("/products", async (req, res) => {
+      const newProduct = req.body;
+      const result = await collection.insertOne(newProduct);
+      res.send(result);
+    });
+
+    app.delete("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await collection.deleteOne(query);
+      res.send(result);
+    });
+    
+    app.patch("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedProduct = req.body;
+      const query={_id: new ObjectId(id)}
+      const update={
+    $set:{
+        name : updatedProduct.name,
+        price : updatedProduct.price
+    }
+
+}   
+ const result=await collection.updateOne(query,update)
+ res.send(result)
+});
+
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!",
+    );
+  } finally {
+  }
+}
+run().catch(console.dir);
+app.listen(port, () => {
+  console.log(`Smart deals Server is running on port ${port}`);
+});
