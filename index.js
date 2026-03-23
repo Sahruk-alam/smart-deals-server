@@ -27,6 +27,7 @@ async function run() {
     await client.connect();
     const db = client.db("smartDeals");
     const collection = db.collection("products");
+    const bidsCollection = db.collection("bids");
 
     app.get('/products/:id', async (req, res) => {
         const id = req.params.id;
@@ -35,8 +36,18 @@ async function run() {
         res.send(result);
     })
     app.get("/products", async (req, res) => {
-        const cursor=collection.find();
-        const result=await cursor.toArray();
+      // const projectFields = { title: 1, price_min: 1 };
+      //   const cursor=collection.find().sort({price_min:1}).skip(4)
+      //   .limit(3).project(projectFields);
+      console.log(req.query);
+
+      const email = req.query.email;
+      const query={}
+      if(email){
+        query.email=email;
+      }
+        const cursor=collection.find(query);
+        const result=(await cursor.toArray());
         res.send(result);
     })
     app.post("/products", async (req, res) => {
@@ -67,11 +78,32 @@ async function run() {
  res.send(result)
 });
 
+// bids api
+app.get("/bids", async (req, res) => {
+  const email = req.query.email;
+  const query={};
+  if(email){
+    query.buyer_email=email; 
+  }
+  console.log(query);
+  const cursor=bidsCollection.find(query);
+  const result=await cursor.toArray();
+  res.send(result);
+});
+
+app.post("/bids", async (req, res) => {
+  const newBids=req.body;
+  const result=await bidsCollection.insertOne(newBids);
+  res.send(result);
+});
+
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
   } finally {
+
   }
 }
 run().catch(console.dir);
