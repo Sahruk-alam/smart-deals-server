@@ -1,16 +1,43 @@
+require('dotenv').config() 
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 3000;
 
-require('dotenv').config() 
+const admin = require("firebase-admin");
 
-const uri =
-  `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jfbqb9o.mongodb.net/?appName=Cluster0`;
+const serviceAccount = require("./smart-deals-3347e.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jfbqb9o.mongodb.net/?appName=Cluster0`;
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const verifyAccessToken=async (req,res,next)=>{
+
+    const authorization=req.headers.authorization;
+    if(!authorization){
+      return res.status(401).send({message:'Unauthorized access'})
+    }
+    const token=authorization.split(' ')[1];
+    try{
+    const decode=await admin.auth().verifyIdToken(token);
+    console.log('Decoded token:', decode);
+    req.decodedEmail=decode.email;
+    next();
+    }
+    catch(error){
+     return res.status(401).send({message:'Unauthorized access'})
+    }
+
+}
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -22,6 +49,7 @@ const client = new MongoClient(uri, {
 
 app.get("/", (req, res) => {
   res.send("Smart deals Server is running");
+  
 });
 
 async function run() {
@@ -46,11 +74,14 @@ async function run() {
     });
 
     // bids api - must come BEFORE /products/:id
-    app.get("/bids", async (req, res) => {
+    app.get("/bids",verifyAccessToken, async (req, res) => {
       const email = req.query.email;
       const query = {};
       if (email) {
         query.buyer_email = email;
+        if(email !==req.token_email){
+          return res.status(403).send({message:'Forbidden access'})
+        }
       }
       console.log(query);
       const cursor = bidsCollection.find(query);
@@ -100,7 +131,8 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-    app.post("/products", async (req, res) => {
+    app.post("/products", verifyAccessToken, async (req, res) => {
+      console.log('Header in the post:', req.headers);
       const newProduct = req.body;
       const result = await collection.insertOne(newProduct);
       res.send(result);
