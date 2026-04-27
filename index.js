@@ -61,7 +61,7 @@ app.get("/", (req, res) => {
 
 async function run() {
   try {
-    await client.connect();
+    
     const db = client.db("smartDeals");
     const collection = db.collection("products");
     const bidsCollection = db.collection("bids");
