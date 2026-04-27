@@ -12,6 +12,10 @@ const admin = require("firebase-admin");
 const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
 const serviceAccount = JSON.parse(decoded);
 
+if (!process.env.FIREBASE_SERVICE_KEY) {
+  throw new Error("Missing FIREBASE_SERVICE_KEY in Vercel");
+}
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
